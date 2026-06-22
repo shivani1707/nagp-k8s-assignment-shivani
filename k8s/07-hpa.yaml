@@ -1,0 +1,41 @@
+# HorizontalPodAutoscaler (HPA) for Product API
+# Automatically scales replicas between 2 and 8 based on CPU usage
+# Satisfies "Demonstrate HPA on Service API" requirement
+#
+# Prerequisites: metrics-server must be running in your cluster
+#   Minikube: minikube addons enable metrics-server
+#
+# To test HPA scaling, generate load:
+#   kubectl run -it --rm load-generator --image=busybox --restart=Never -n nagp-app \
+#     -- /bin/sh -c "while true; do wget -q -O- http://product-api-service/api/products; done"
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: product-api-hpa
+  namespace: nagp-app
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: product-api
+  minReplicas: 2               # Minimum 2 pods even at low load (FinOps: save cost)
+  maxReplicas: 8               # Maximum 8 pods under heavy load
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60     # Scale up if avg CPU > 60%
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70     # Scale up if avg memory > 70%
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30    # Wait 30s before scaling up again
+    scaleDown:
+      stabilizationWindowSeconds: 120   # Wait 2 min before scaling down (avoid flapping)

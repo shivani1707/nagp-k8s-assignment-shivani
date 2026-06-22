@@ -1,0 +1,144 @@
+# Product API Deployment
+# - 4 replicas (as required)
+# - Rolling update strategy
+# - Self-healing via liveness + readiness probes
+# - ConfigMap and Secret injected as environment variables
+# - Resource requests/limits set (FinOps requirement)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-api
+  namespace: nagp-app
+  labels:
+    app: product-api
+    tier: service
+  annotations:
+    kubernetes.io/change-cause: "Initial deployment v1.0.0"   # Used in rollout history
+spec:
+  replicas: 4                  # Required: 4 pods for the Service API tier
+
+  selector:
+    matchLabels:
+      app: product-api
+
+  # Rolling Update Strategy — satisfies "support rolling updates" requirement
+  # At most 1 pod unavailable, at most 1 extra pod created at a time
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1        # At most 1 pod down during update
+      maxSurge: 1              # At most 1 extra pod created during update
+
+  template:
+    metadata:
+      labels:
+        app: product-api
+        tier: service
+    spec:
+      # Wait for postgres to be ready before scheduling (soft dependency)
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z postgres-service 5432; do
+                echo "Waiting for PostgreSQL...";
+                sleep 3;
+              done;
+              echo "PostgreSQL is ready!"
+
+      containers:
+        - name: product-api
+          image: shivani170293/nagp-product-api:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+
+          # DB connection config from ConfigMap (non-sensitive)
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: DB_PORT
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: DB_NAME
+            # DB credentials from Secret (sensitive)
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: db-username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: db-password
+            # Other config from ConfigMap
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: SPRING_PROFILES_ACTIVE
+
+          # Liveness Probe — Kubernetes restarts the pod if the app hangs
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 60      # Spring Boot needs time to start
+            periodSeconds: 15
+            failureThreshold: 3
+
+          # Readiness Probe — pod only gets traffic when Spring Boot is fully started
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 3
+
+          # FinOps: Resource requests tell the scheduler how much to reserve
+          # Resource limits cap maximum usage to prevent one pod starving others
+          resources:
+            requests:
+              cpu: "100m"         # 0.1 CPU core reserved per pod
+              memory: "256Mi"     # 256MB RAM reserved per pod
+            limits:
+              cpu: "500m"         # Max 0.5 CPU core per pod
+              memory: "512Mi"     # Max 512MB RAM per pod
+
+---
+# NodePort Service for Product API
+# NodePort exposes the service on a static port on every cluster node
+# Ingress will route external traffic through this service
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-api-service
+  namespace: nagp-app
+  labels:
+    app: product-api
+    tier: service
+spec:
+  type: NodePort               # Exposed externally (via Ingress or direct NodePort access)
+  selector:
+    app: product-api
+  ports:
+    - port: 80                 # Port on the Service
+      targetPort: 8080         # Port on the container
+      nodePort: 30080          # Fixed NodePort (30000-32767 range)
+      protocol: TCP

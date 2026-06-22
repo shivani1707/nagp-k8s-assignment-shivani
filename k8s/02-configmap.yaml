@@ -1,0 +1,25 @@
+# ConfigMap holds non-sensitive database configuration.
+# These values are injected into both the DB pod and the API pod as environment variables.
+# This means you can change DB_HOST, DB_PORT etc. without touching any application code.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-config
+  namespace: nagp-app
+data:
+  # Kubernetes Service name for PostgreSQL — pods communicate via DNS, NOT pod IPs
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_NAME: "productsdb"
+
+---
+# ConfigMap for API tier — can be extended with feature flags, log levels, etc.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  namespace: nagp-app
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  SERVER_PORT: "8080"

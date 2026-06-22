@@ -1,0 +1,116 @@
+# PostgreSQL Deployment
+# - 1 replica (as required)
+# - Persistent storage via PVC
+# - Accessible only inside the cluster (ClusterIP service)
+# - Credentials injected from Secret
+# - Self-healing: if pod is deleted, Kubernetes recreates it automatically
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: nagp-app
+  labels:
+    app: postgres
+    tier: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  # No rolling update strategy — DB should be Recreate to avoid data conflicts
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: postgres
+        tier: database
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine          # Lightweight official PostgreSQL image
+          ports:
+            - containerPort: 5432
+
+          # Database credentials from Secret (never hardcoded in YAML)
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: db-username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: db-password
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: DB_NAME
+
+          # Mount persistent volume so data survives pod restarts
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+              subPath: pgdata                # subPath prevents permission issues
+
+          # Liveness probe — Kubernetes restarts pod if DB becomes unresponsive
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+
+          # Readiness probe — pod only receives traffic when DB is ready
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+          # Resource limits for FinOps
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+
+---
+# ClusterIP Service for PostgreSQL
+# ClusterIP = only reachable INSIDE the cluster — satisfies "no external access" requirement
+# The DNS name "postgres-service.nagp-app.svc.cluster.local" is how the API connects
+# This avoids using pod IPs (which change on restart)
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: nagp-app
+  labels:
+    app: postgres
+    tier: database
+spec:
+  type: ClusterIP              # Internal only — NOT exposed outside cluster
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP

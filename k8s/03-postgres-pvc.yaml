@@ -1,0 +1,17 @@
+# PersistentVolumeClaim (PVC) reserves storage for the PostgreSQL pod.
+# Even if the pod is deleted and recreated, the data on this volume survives.
+# This is how we satisfy the "data persistence" requirement.
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: nagp-app
+spec:
+  accessModes:
+    - ReadWriteOnce          # One node can mount this at a time (correct for single DB pod)
+  resources:
+    requests:
+      storage: 1Gi           # 1GB storage — enough for this demo
+  # storageClassName: standard   # Uncomment and set to your cluster's storage class if needed
+  #                                On Minikube this is "standard", on GKE it's "standard"

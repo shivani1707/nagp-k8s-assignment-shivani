@@ -1,0 +1,27 @@
+# Ingress exposes the Service API Tier externally via HTTP
+# On Minikube: run "minikube addons enable ingress" first
+# Then access via: http://nagp-product-api.local/api/products
+# (Add "$(minikube ip) nagp-product-api.local" to your /etc/hosts)
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: product-api-ingress
+  namespace: nagp-app
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+spec:
+  ingressClassName: nginx      # Use nginx ingress controller
+  rules:
+    - host: nagp-product-api.local    # Replace with your actual domain or minikube IP
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: product-api-service
+                port:
+                  number: 80

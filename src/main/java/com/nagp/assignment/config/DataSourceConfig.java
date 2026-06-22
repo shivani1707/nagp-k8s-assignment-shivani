@@ -8,10 +8,11 @@ import org.springframework.context.annotation.Configuration;
 
 import javax.sql.DataSource;
 
-/**
+/*
  * Database configuration using HikariCP connection pool.
  * All values are injected from environment variables (set via ConfigMap + Secret in Kubernetes).
  */
+
 @Configuration
 public class DataSourceConfig {
 
