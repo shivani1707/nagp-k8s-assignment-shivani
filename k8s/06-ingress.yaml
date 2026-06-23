@@ -6,6 +6,7 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
+  ingressClassName: nginx
   rules:
     - http:
         paths:
@@ -15,4 +16,4 @@ spec:
               service:
                 name: product-api-service
                 port:
-                  number: 3000
+                  number: 80
