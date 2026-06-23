@@ -97,18 +97,18 @@ spec:
             httpGet:
               path: /api/health
               port: 8080
-            initialDelaySeconds: 60      # Spring Boot needs time to start
+            initialDelaySeconds: 120      # Spring Boot needs time to start
             periodSeconds: 15
-            failureThreshold: 3
+            failureThreshold: 5
 
           # Readiness Probe — pod only gets traffic when Spring Boot is fully started
           readinessProbe:
             httpGet:
               path: /api/health
               port: 8080
-            initialDelaySeconds: 45
+            initialDelaySeconds: 90
             periodSeconds: 10
-            failureThreshold: 3
+            failureThreshold: 5
 
           # FinOps: Resource requests tell the scheduler how much to reserve
           # Resource limits cap maximum usage to prevent one pod starving others
