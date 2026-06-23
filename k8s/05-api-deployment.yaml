@@ -141,4 +141,4 @@ spec:
     - port: 80                 # Port on the Service
       targetPort: 8080         # Port on the container
       nodePort: 30080          # Fixed NodePort (30000-32767 range)
-      protocol: TCP
+
