@@ -5,11 +5,11 @@
 
 | Resource | URL |
 |---|---|
-| **GitHub Repository** | https://github.com/shivani170293/nagp-k8s-assignment-shivani |
+| **GitHub Repository** | https://github.com/shivani1707/nagp-k8s-assignment-shivani |
 | **Docker Hub Image** | https://hub.docker.com/r/shivani170293/nagp-product-api |
 | **API — All Products** | http://INGRESS_IP/api/products |
 | **API — Health Check** | http://INGRESS_IP/api/health |
-| **Screen Recording** | https://drive.google.com/YOUR_VIDEO_LINK |
+| **Screen Recording** | https://nagarro-my.sharepoint.com/:v:/p/shivani_verma/IQBOKhv_FKbGSJ6apmpD85_DAVtpVbqzn2yBwKIZwuvsUmQ?e=oWQfua |
 
 > ⚠️ Replace `INGRESS_IP` with the actual external IP from:
 > ```bash
