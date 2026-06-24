@@ -12,6 +12,6 @@ spec:
     - ReadWriteOnce          # One node can mount this at a time (correct for single DB pod)
   resources:
     requests:
-      storage: 1Gi           # 1GB storage — enough for this demo
-  # storageClassName: standard   # Uncomment and set to your cluster's storage class if needed
-  #                                On Minikube this is "standard", on GKE it's "standard"
+      storage: 1Gi          
+    storageClassName: standard   
+                                  
